@@ -44,7 +44,17 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime.now(),
       isIncome: false,
     ),
+    Transaction(
+      id: 't3',
+      description: 'Presente',
+      amount: 150.00,
+      date: DateTime(2025, 3, 15),
+      isIncome: false,
+    ),
   ];
+
+  String _searchText = '';
+  int? _selectedMonth; // 1 = Janeiro, 2 = Fevereiro, etc.
 
   void _addNewTransaction(Transaction newTransaction) {
     setState(() {
@@ -62,6 +72,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  List<Transaction> get _filteredTransactions {
+    return _transactions.where((tx) {
+      final matchesSearch = tx.description.toLowerCase().contains(_searchText.toLowerCase());
+      final matchesMonth = _selectedMonth == null || tx.date.month == _selectedMonth;
+      return matchesSearch && matchesMonth;
+    }).toList();
+  }
+
+  List<DropdownMenuItem<int>> _buildMonthDropdownItems() {
+    return List.generate(12, (index) {
+      return DropdownMenuItem(
+        value: index + 1,
+        child: Text(
+          _monthName(index + 1),
+        ),
+      );
+    });
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,27 +111,74 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: _transactions.length,
-        itemBuilder: (context, index) {
-          final tx = _transactions[index];
-          return ListTile(
-            leading: Icon(
-              tx.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-              color: tx.isIncome ? Colors.green : Colors.red,
-            ),
-            title: Text(tx.description),
-            subtitle: Text(
-              '${tx.date.day}/${tx.date.month}/${tx.date.year}',
-            ),
-            trailing: Text(
-              'R\$ ${tx.amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: tx.isIncome ? Colors.green : Colors.red,
+      body: Column(
+        children: [
+          // Campo de pesquisa
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: const InputDecoration(
+                labelText: 'Pesquisar por nome',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchText = value;
+                });
+              },
             ),
-          );
-        },
+          ),
+
+          // Dropdown para escolher o mês
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: DropdownButtonFormField<int>(
+              value: _selectedMonth,
+              decoration: const InputDecoration(
+                labelText: 'Filtrar por mês',
+                border: OutlineInputBorder(),
+              ),
+              items: _buildMonthDropdownItems(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedMonth = value;
+                });
+              },
+              isExpanded: true,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Lista de transações filtradas
+          Expanded(
+            child: _filteredTransactions.isEmpty
+                ? const Center(child: Text('Nenhuma transação encontrada.'))
+                : ListView.builder(
+                    itemCount: _filteredTransactions.length,
+                    itemBuilder: (context, index) {
+                      final tx = _filteredTransactions[index];
+                      return ListTile(
+                        leading: Icon(
+                          tx.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                          color: tx.isIncome ? Colors.green : Colors.red,
+                        ),
+                        title: Text(tx.description),
+                        subtitle: Text(
+                          '${tx.date.day}/${tx.date.month}/${tx.date.year}',
+                        ),
+                        trailing: Text(
+                          'R\$ ${tx.amount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: tx.isIncome ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddTransactionScreen,
@@ -103,3 +187,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

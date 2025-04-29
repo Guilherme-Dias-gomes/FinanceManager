@@ -4,26 +4,29 @@ import '../models/transaction.dart';
 
 class MonthlyBarChart extends StatelessWidget {
   final List<Transaction> transactions;
-  final int? selectedMonth;
+  final DateTime selectedMonth;
 
   const MonthlyBarChart({
     super.key,
     required this.transactions,
-    this.selectedMonth,
+    required this.selectedMonth,
   });
 
-  Map<int, Map<String, double>> getMonthlyData() {
+  Map<int, Map<String, double>> getDailyDataForMonth() {
+    final filteredTx = transactions.where((tx) =>
+        tx.date.year == selectedMonth.year && tx.date.month == selectedMonth.month);
+
     final data = <int, Map<String, double>>{};
 
-    for (var tx in transactions) {
-      final month = tx.date.month;
+    for (var tx in filteredTx) {
+      final day = tx.date.day;
 
-      data[month] ??= {'income': 0.0, 'expense': 0.0};
+      data[day] ??= {'income': 0.0, 'expense': 0.0};
 
       if (tx.isIncome) {
-        data[month]!['income'] = data[month]!['income']! + tx.amount;
+        data[day]!['income'] = data[day]!['income']! + tx.amount;
       } else {
-        data[month]!['expense'] = data[month]!['expense']! + tx.amount;
+        data[day]!['expense'] = data[day]!['expense']! + tx.amount;
       }
     }
 
@@ -32,107 +35,76 @@ class MonthlyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filteredTransactions =
-        selectedMonth == null
-            ? transactions
-            : transactions
-                .where((tx) => tx.date.month == selectedMonth)
-                .toList();
+    final data = getDailyDataForMonth();
 
-    final monthlyData = getMonthlyData();
+    final allValues = data.values.expand((map) => map.values);
+    final maxValue = allValues.isEmpty ? 100 : allValues.reduce((a, b) => a > b ? a : b);
 
-    // Extrai todos os valores numéricos (income + expense)
-    final allValues = monthlyData.values.expand((map) => map.values);
-    final maxValue =
-        allValues.isEmpty ? 100 : allValues.reduce((a, b) => a > b ? a : b);
+    final sortedDays = data.keys.toList()..sort();
 
-    return SizedBox(
-      height: 250,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxValue + 100,
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.black87,
-              fitInsideVertically:
-                  true, // ← ESSA LINHA RESOLVE o problema do "vazamento"
-              tooltipPadding: const EdgeInsets.all(8),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                return BarTooltipItem(
-                  'R\$ ${rod.toY.toStringAsFixed(2)}',
-                  const TextStyle(color: Colors.white),
-                );
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxValue + 100,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.black87,
+            fitInsideVertically: true,
+            tooltipPadding: const EdgeInsets.all(8),
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                'R\$ ${rod.toY.toStringAsFixed(2)}',
+                const TextStyle(color: Colors.white),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              getTitlesWidget: (value, meta) => Text('Dia ${value.toInt()}', style: const TextStyle(fontSize: 10)),
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                if (value == 0) return const Text('0');
+                if (value >= 1000) return Text('${(value / 1000).toStringAsFixed(1)}k');
+                return Text(value.toStringAsFixed(0));
               },
             ),
           ),
-
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final month = value.toInt();
-                  const monthLabels = [
-                    'J',
-                    'F',
-                    'M',
-                    'A',
-                    'M',
-                    'J',
-                    'J',
-                    'A',
-                    'S',
-                    'O',
-                    'N',
-                    'D',
-                  ];
-                  return Text(monthLabels[month - 1]);
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  if (value == 0) return const Text('0');
-                  if (value >= 1000) {
-                    return Text('${(value / 1000).toStringAsFixed(1)}k');
-                  }
-                  return Text(value.toStringAsFixed(0));
-                },
-              ),
-            ),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          barGroups: List.generate(12, (index) {
-            final month = index + 1;
-            final income = monthlyData[month]?['income'] ?? 0.0;
-            final expense = monthlyData[month]?['expense'] ?? 0.0;
-
-            return BarChartGroupData(
-              x: month,
-              barRods: [
-                BarChartRodData(
-                  toY: expense,
-                  width: 8,
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                BarChartRodData(
-                  toY: income,
-                  width: 8,
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ],
-              barsSpace: 4,
-            );
-          }),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
+        barGroups: sortedDays.map((day) {
+          final income = data[day]?['income'] ?? 0.0;
+          final expense = data[day]?['expense'] ?? 0.0;
+
+          return BarChartGroupData(
+            x: day,
+            barRods: [
+              BarChartRodData(
+                toY: expense,
+                width: 8,
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              BarChartRodData(
+                toY: income,
+                width: 8,
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ],
+            barsSpace: 4,
+          );
+        }).toList(),
       ),
     );
   }

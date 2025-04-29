@@ -52,9 +52,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Adicionar Transação'),
-      ),
+      appBar: AppBar(title: const Text('Adicionar Transação')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -84,7 +82,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ),
             Row(
               children: [
-                Text('Data: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+                Text(
+                  'Data: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                ),
                 TextButton(
                   onPressed: _pickDate,
                   child: const Text('Selecionar Data'),
